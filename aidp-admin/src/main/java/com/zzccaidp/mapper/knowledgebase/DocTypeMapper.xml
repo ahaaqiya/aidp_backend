@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.knowledgebase.DocTypeMapper">
+  <resultMap id="BaseResultMap" type="com.zzccaidp.dao.knowledgebase.DocTypeDO">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="VARCHAR" property="id" />
+    <result column="code" jdbcType="VARCHAR" property="code" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="description" jdbcType="VARCHAR" property="description" />
+    <result column="count" jdbcType="INTEGER" property="count" />
+    <result column="chunk_method" jdbcType="VARCHAR" property="chunkMethod" />
+    <result column="source_count" jdbcType="INTEGER" property="sourceCount" />
+    <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="status" jdbcType="VARCHAR" property="status" />
+    <result column="sources" jdbcType="LONGVARCHAR" property="sources" />
+    <result column="dataset_id" jdbcType="VARCHAR" property="datasetId" />
+    <result column="retrieval_enabled" jdbcType="TINYINT" property="retrievalEnabled" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, code, name, description, count, chunk_method, source_count, update_time, sources, status, dataset_id, retrieval_enabled
+  </sql>
+
+  <select id="selectById" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List"/>
+    FROM doc_type
+    WHERE id = #{id}
+  </select>
+
+  <select id="selectByCode" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List"/>
+    FROM doc_type
+    WHERE code = #{code}
+  </select>
+
+  <select id="selectAll" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List"/>
+    FROM doc_type
+    WHERE status != 'deleted'
+    AND code != 'personal'
+    ORDER BY update_time DESC
+  </select>
+
+  <select id="searchByKeyword" resultMap="BaseResultMap">
+    SELECT <include refid="Base_Column_List"/>
+    FROM doc_type
+    WHERE (
+    name LIKE CONCAT('%', #{keyword}, '%')
+    OR code LIKE CONCAT('%', #{keyword}, '%')
+    OR description LIKE CONCAT('%', #{keyword}, '%')
+    )
+    AND code != 'personal'
+    ORDER BY update_time DESC
+  </select>
+
+  <insert id="insert" parameterType="com.zzccaidp.dao.knowledgebase.DocTypeDO">
+    INSERT INTO doc_type (
+    id, code, name, description, count, chunk_method, source_count, update_time, sources
+    ) VALUES (
+    #{id}, #{code}, #{name}, #{description}, #{count}, #{chunkMethod}, #{sourceCount}, #{updateTime}, #{sources}
+    )
+  </insert>
+
+  <update id="update" parameterType="com.zzccaidp.dao.knowledgebase.DocTypeDO">
+    UPDATE doc_type
+    SET code = #{code},
+    name = #{name},
+    description = #{description},
+    chunk_method = #{chunkMethod},
+    update_time = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <update id="updateChunkMethod">
+    UPDATE doc_type
+    SET chunk_method = #{chunkMethod},
+    update_time = NOW()
+    WHERE id = #{id}
+  </update>
+
+  <update id="deleteById">
+    DELETE FROM doc_type WHERE id = #{id}
+  </update>
+
+  <select id="countAll" resultType="int">
+    SELECT COUNT(*) FROM doc_type WHERE status != 'deleted' AND code != 'personal'
+  </select>
+
+  <select id="existsByCode" resultType="boolean">
+    SELECT EXISTS(SELECT 1 FROM doc_type WHERE code = #{code})
+  </select>
+
+
+  <select id="getDocTypeListByDocId" resultMap="BaseResultMap">
+    SELECT t.*
+    FROM document d
+    JOIN doc_type t ON d.doc_type = t.code
+    WHERE d.doc_id = #{docId}
+  </select>
+</mapper>

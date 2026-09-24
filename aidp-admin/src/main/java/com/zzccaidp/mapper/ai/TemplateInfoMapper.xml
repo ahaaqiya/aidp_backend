@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.ai.TemplateInfoMapper">
+
+    <!-- resultMap to map columns to TemplateInfo properties -->
+    <resultMap id="BaseResultMap" type="com.zzccaidp.dao.ai.TemplateInfoDO">
+        <id column="id" property="id"/>
+        <result column="rule_id" property="ruleId"/>
+        <result column="template_name" property="templateName"/>
+        <result column="template_type" property="templateType"/>
+        <result column="template_content" property="templateContent"/>
+        <result column="creator" property="creator"/>
+        <result column="create_time" property="createTime"/>
+        <result column="modifier" property="modifier"/>
+        <result column="modify_time" property="modifyTime"/>
+    </resultMap>
+</mapper>

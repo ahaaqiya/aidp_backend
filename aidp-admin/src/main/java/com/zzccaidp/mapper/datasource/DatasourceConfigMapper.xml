@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.datasource.DataSourceConfigMapper">
+
+
+    <select id="listDatasource" resultType="com.zzccaidp.dao.datasource.DataSourceConfigDO"
+            parameterType="com.zzccaidp.vo.datasource.ListDatasourceParam">
+        select id,
+        datasource_name as datasourceName,
+        datasource_database as datasourceDatabase,
+        datasource_type as datasourceType,
+        datasource_host as datasourceHost,
+        datasource_port as datasourcePort,
+        datasource_user as datasourceUser,
+        datasource_description as datasourceDescription,
+        is_enabled as isEnabled,
+        create_time as createTime,
+        update_time as updateTime
+        from datasource_config
+        <where>
+            <if test="datasourceName != null and datasourceName!=''">
+                datasource_name = #{datasourceName}
+            </if>
+        </where>
+        order by update_time desc
+    </select>
+
+</mapper>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.ai.RuleConfigMapper">
+    <!-- Result Map -->
+    <resultMap id="RuleConfigResultMap" type="com.zzccaidp.dao.ai.RuleConfigDO">
+        <id property="id" column="id"/>
+        <result property="ruleId" column="rule_id"/>
+        <result property="ruleName" column="rule_id"/>
+        <result property="ruleDescription" column="rule_description"/>
+        <result property="extractFieldFileid" column="extract_field_fileid"/>
+        <result property="fieldMappingFileid" column="field_mapping_fileid"/>
+        <result property="promptFileid" column="prompt_fileid"/>
+        <result property="appid" column="appid"/>
+        <result property="scene" column="scene"/>
+        <result property="mode" column="mode"/>
+        <result property="recognizeType" column="recognizeType"/>
+        <result property="page" column="page"/>
+        <result property="parametersConfig" column="parameters_config"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdTime" column="created_time"/>
+        <result property="modifiedBy" column="modified_by"/>
+        <result property="modifiedTime" column="modified_time"/>
+        <result property="templateId" column="template_id"/>
+        <result property="flag" column="flag"/>
+    </resultMap>
+
+    <update id="updateRuleConfigByRuleId">
+        update zzccaidp_rule_config
+        <set>
+            <if test="ruleName != null and ruleName != ''">
+                rule_name = #{ruleName},
+            </if>
+            <if test="ruleDescription != null and ruleDescription != ''">
+                rule_description = #{ruleDescription},
+            </if>
+            <if test="extractFieldFileid != null and extractFieldFileid != ''">
+                extract_field_fileid = #{extractFieldFileid},
+            </if>
+            <if test="fieldMappingFileid != null and fieldMappingFileid != ''">
+                field_mapping_fileid = #{fieldMappingFileid},
+            </if>
+            <if test="promptFileid != null and promptFileid != ''">
+                prompt_fileid = #{promptFileid},
+            </if>
+            <if test="appid != null and appid != ''">
+                appid = #{appid},
+            </if>
+            <if test="scene != null and scene != ''">
+                scene = #{scene},</if>
+            <if test="mode != null and mode != ''">
+                mode = #{mode},
+            </if>
+            <if test="recognizeType != null and recognizeType != ''">
+                recognizeType = #{recognizeType},
+            </if>
+            <if test="page != null and page != ''">
+                page = #{page},
+            </if>
+            <if test="parametersConfig != null and parametersConfig != ''">
+                parameters_config = #{parametersConfig},
+            </if>
+            <if test="createdBy != null and createdBy != ''">
+                created_by = #{createdBy},
+            </if>
+            <if test="createdTime != null">
+                created_time = #{createdTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="modifiedBy != null and modifiedBy != ''">
+                modified_by = #{modifiedBy},
+            </if>
+            <if test="modifiedTime != null">
+                modified_time = #{modifiedTime,jdbcType=TIMESTAMP}
+            </if>
+        </set>
+        where rule_id = #{ruleId}
+    </update>
+
+    <select id="getRuleConfigByRuleId" resultType="com.zzccaidp.dao.ai.RuleConfigDO">
+        select * from zzccaidp_rule_config where rule_id = #{ruleId}
+    </select>
+
+    <update id="updateRuleConfigByTemplateId">
+        update zzccaidp_rule_config
+        <set>
+            <if test="templateId != null and templateId != ''">
+                template_id = ''
+            </if>
+        </set>
+        where template_id = #{templateId}
+    </update>
+
+</mapper>

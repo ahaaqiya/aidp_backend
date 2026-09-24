@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.agent.AgentSessionMapper">
+
+
+    <select id="listSessionsByUserId" resultType="com.zzccaidp.dao.agent.AgentSessionDO">
+        SELECT
+        session_id,
+        user_id,
+        agent_id,
+        agent_type,
+        title,
+        status,
+        model,
+        context_summary,
+        total_tokens,
+        created_at,
+        updated_at
+        FROM
+        sessions
+        WHERE
+        user_id=#{userId};
+    </select>
+    <delete id="deleteSessionBySessionId">
+        DELETE FROM sessions WHERE session_id=#{sessionId};
+    </delete>
+
+</mapper>

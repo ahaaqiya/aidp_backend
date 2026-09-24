@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.datasource.OADocAssociationMapper">
+
+
+    <select id="listDocIdByDocIndexId" resultType="com.zzccaidp.dao.datasource.OADocAssociationDO">
+        select distinct doc_id  from oa_doc_association where doc_index_id in
+        <foreach collection="docIndexList" separator="," open="(" close=")" item="docIndexId">
+            #{docIndexId}
+        </foreach>
+    </select>
+    <insert id="insertOaDocAssociation">
+        INSERT INTO oa_doc_association (doc_id, doc_index_id, create_time) VALUES
+        <foreach collection="oaDocAssociationDOList" item="item" separator=",">
+            (#{item.docId},#{item.docIndexId},#{item.createTime})
+        </foreach>
+    </insert>
+
+</mapper>

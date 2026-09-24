@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.PermissionMapper">
+    <select id="findBro" resultType="com.zzccaidp.dao.system.PermissionDO">
+        select * from base_permission where pid = (select pid from base_permission where id = #{id} and del_flag = 0)
+        and id != #{exid} and del_flag = 0 order by order_id
+    </select>
+
+    <update id="updateParent">
+        update base_permission set pid = #{pid}, order_id = (
+        select t.* from (select ifnull(max(order_id) + 1, 1) from base_permission where pid = #{pid} and del_flag = 0) t
+        ) where id = #{id} and del_flag = 0
+    </update>
+
+    <select id="listPermissionByOrderId" resultType="java.lang.String">
+        select id from zzccaidp_permission where order_id &gt;= #{startId} and order_id &lt; #{endId}
+    </select>
+    <delete id="deleteByIdList">
+        delete from zzccaidp_permission where id in
+        <foreach collection="idList" item="id" close=")" open="(" separator=",">
+            #{id}
+        </foreach>
+    </delete>
+    <select id="listPermissionByRoleId" resultType="com.zzccaidp.dao.system.PermissionDO">
+        select
+        zp.id,zp.del_flag,zp.gmt_create,zp.gmt_create_user,zp.gmt_modified,zp.gmt_modified_user,zp.pid,zp.status,zp.order_id,zp.name,zp.`type`,zp.permission_value,zp.link,zp.module_js,zp.view_params,zp.icon,zp.cls,zp.`level`
+        from zzccaidp_permission zp
+        <if test="roleIdList != null and roleIdList.size>0">
+            , zzccaidp_role_permission zrp where zp.id=zrp.permission_id
+            and zrp.status = '1'
+            and zrp.role_id in
+            <foreach collection="roleIdList" item="roleId" close=")" open="(" separator=",">
+                #{roleId}
+            </foreach>
+        </if>
+        order by zp.order_id
+    </select>
+
+    <select id="listPermissionByRoleIdNew" resultType="com.zzccaidp.dao.system.PermissionDO">
+        select
+        distinct zp.order_id,zp.id,zp.pid,zp.name,zp.level,zp.link,zp.status,zp.icon
+        from zzccaidp_permission zp, zzccaidp_role_permission zrp
+        where zp.id=zrp.permission_id
+        and zp.del_flag = 0 and zp.status = 0  and zp.`type` in (1,2)
+        and zrp.role_id in
+        <foreach collection="roleIdList" item="roleId" close=")" open="(" separator=",">
+            #{roleId}
+        </foreach>
+        order by zp.order_id
+    </select>
+
+    <select id="getOrderIdByPidOrder" resultType="java.lang.Integer">
+        select max(order_id) from zzccaidp_permission where pid=#{pid}
+    </select>
+</mapper>

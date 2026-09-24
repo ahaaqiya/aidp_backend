@@ -1,0 +1,28 @@
+# 编译产物
+target/
+*.class
+
+# 运行日志
+logs/
+*.log
+
+# IDE 配置
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.bak
+
+# 本地凭据配置（禁止入库）
+application-local.properties
+application-local.yml
+application-local.yaml
+*-local.properties

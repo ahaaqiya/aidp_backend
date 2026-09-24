@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.SystemParamsMapper">
+    <select id="listSysParamsByDO" resultType="com.zzccaidp.dao.system.SystemParamsDO">
+        SELECT
+        sp.id,
+        sp.params_key,
+        sp.params_value,
+        sp.remark,
+        sp.params_start
+        FROM
+        zzccaidp_system_params sp
+        <where>
+            <if test="paramsKey != null and paramsKey !=''">sp.params_key LIKE CONCAT('%',#{paramsKey},'%')</if>
+        </where>
+
+    </select>
+    <select id="selectByParamKey" resultType="com.zzccaidp.dao.system.SystemParamsDO">
+        SELECT
+        sp.id,
+        sp.params_key,
+        sp.params_value,
+        sp.remark,
+        sp.params_start
+        FROM
+        zzccaidp_system_params sp
+        where params_key = #{paramKey}
+    </select>
+</mapper>

@@ -1,0 +1,474 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.knowledgebase.DocumentMapper">
+    <resultMap id="BaseResultMap" type="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="doc_id" jdbcType="VARCHAR" property="docId"/>
+        <result column="data_source_id" jdbcType="BIGINT" property="dataSourceId"/>
+        <result column="channel" jdbcType="VARCHAR" property="channel"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="file_type" jdbcType="VARCHAR" property="fileType"/>
+        <result column="doc_type" jdbcType="VARCHAR" property="docType"/>
+        <result column="doc_type_name" jdbcType="VARCHAR" property="docTypeName"/>
+        <result column="source_name" jdbcType="VARCHAR" property="sourceName"/>
+        <result column="source_status" jdbcType="VARCHAR" property="sourceStatus"/>
+        <result column="switch_status" jdbcType="BIT" property="switchStatus"/>
+        <result column="task_status" jdbcType="VARCHAR" property="taskStatus"/>
+        <result column="last_process_time" jdbcType="TIMESTAMP" property="lastProcessTime"/>
+        <result column="md5" jdbcType="VARCHAR" property="md5"/>
+        <result column="file_size" jdbcType="VARCHAR" property="fileSize"/>
+        <result column="creator" jdbcType="VARCHAR" property="creator"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="modifier" jdbcType="VARCHAR" property="modifier"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+        <result column="xsky_path" jdbcType="VARCHAR" property="xskyPath"/>
+        <result column="bucket_name" jdbcType="VARCHAR" property="bucketName"/>
+        <result column="bucket_path" jdbcType="VARCHAR" property="bucketPath"/>
+        <result column="vector_enabled" jdbcType="VARCHAR" property="vectorEnabled"/>
+        <result column="vector_id" jdbcType="VARCHAR" property="vectorId"/>
+        <result column="status" jdbcType="VARCHAR" property="status"/>
+        <result column="visibility" jdbcType="LONGVARCHAR" property="visibility"/>
+        <result column="metadata" jdbcType="LONGVARCHAR" property="metadata"/>
+        <result column="parent_doc_name" jdbcType="VARCHAR" property="parentDocName"/>
+        <result column="is_attachment" jdbcType="TINYINT" property="isAttachment"/>
+        <result column="own_dataset_id" jdbcType="VARCHAR" property="ownDatasetId"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, doc_id, data_source_id, channel, name, file_type, doc_type, doc_type_name,
+        source_name, source_status, switch_status, task_status, last_process_time, md5, file_size,
+        creator, create_time, modifier, update_time, visibility, xsky_path, bucket_name, bucket_path, vector_enabled,
+        vector_id,status, metadata, parent_doc_name, is_attachment, own_dataset_id
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT<include refid="Base_Column_List"/>, status
+        FROM document
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByDocId" resultType="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        SELECT
+        d.id,
+        d.doc_id as docId,
+        d.data_source_id as dataSourceId,
+        d.channel,
+        d.name,
+        d.file_type as fileType,
+        d.doc_type as docType,
+        d.doc_type_name as docTypeName,
+        d.source_name as sourceName,
+        d.source_status as sourceStatus,
+        d.switch_status as switchStatus,
+        d.task_status as taskStatus,
+        d.last_process_time as lastProcessTime,
+        d.md5,
+        d.file_size as fileSize,
+        d.creator,
+        d.create_time as createTime,
+        d.modifier,
+        d.update_time as updateTime,
+        d.visibility,
+        d.xsky_path as xskyPath,
+        d.bucket_name as bucketName,
+        d.bucket_path bucketPath,
+        d.vector_enabled as vectorEnabled,
+        d.vector_id as vectorId,
+        d.metadata,
+        d.parent_doc_name as parentDocName,
+        d.is_attachment as isAttachment,
+        dt.dataset_id as datasetId,
+        d.status as status
+        FROM document d
+        JOIN doc_type dt ON d.doc_type = dt.code
+        WHERE d.doc_id = #{docId}
+    </select>
+
+    <!-- 按 docId + channel 查询单条【公共库专用】：
+         关联 doc_type 表取 datasetId（公共库 datasetId 来自 doc_type.dataset_id）。
+         个人知识库文档（doc_type='personal'）按设计不在 doc_type 表登记，会因此被连表过滤，
+         故个人库渠道改走下方专用 SQL selectPersonalByDocIdAndChannel，不由本方法承担。 -->
+    <select id="findByDocIdAndChannel" resultType="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        SELECT
+        d.id,
+        d.doc_id as docId,
+        d.data_source_id as dataSourceId,
+        d.channel,
+        d.name,
+        d.file_type as fileType,
+        d.doc_type as docType,
+        d.doc_type_name as docTypeName,
+        d.source_name as sourceName,
+        d.source_status as sourceStatus,
+        d.switch_status as switchStatus,
+        d.task_status as taskStatus,
+        d.last_process_time as lastProcessTime,
+        d.md5,
+        d.file_size as fileSize,
+        d.creator,
+        d.create_time as createTime,
+        d.modifier,
+        d.update_time as updateTime,
+        d.visibility,
+        d.xsky_path as xskyPath,
+        d.bucket_name as bucketName,
+        d.bucket_path bucketPath,
+        d.vector_enabled as vectorEnabled,
+        d.vector_id as vectorId,
+        d.metadata,
+        d.parent_doc_name as parentDocName,
+        d.is_attachment as isAttachment,
+        dt.dataset_id as datasetId,
+        d.status as status
+        FROM document d
+        JOIN doc_type dt ON d.doc_type = dt.code
+        WHERE d.doc_id = #{docId}
+        and channel=#{channel}
+    </select>
+
+    <select id="selectByDataSourceId" resultMap="BaseResultMap">
+        SELECT<include refid="Base_Column_List"/>, status
+        FROM document
+        WHERE data_source_id = #{dataSourceId} AND status != 'deleted'
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT<include refid="Base_Column_List"/>, status
+        FROM document
+        WHERE status != 'deleted'
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT<include refid="Base_Column_List"/>, status
+        FROM document
+        WHERE status != 'deleted'
+        <if test="id != null">
+            AND id = #{id}
+        </if>
+        <if test="docId != null and docId != ''">
+            AND doc_id = #{docId}
+        </if>
+        <if test="dataSourceId != null">
+            AND data_source_id = #{dataSourceId}
+        </if>
+        <if test="channel != null and channel != ''">
+            AND channel = #{channel}
+        </if>
+        <if test="name != null and name != ''">
+            AND name LIKE CONCAT('%', #{name}, '%')
+        </if>
+        <if test="fileType != null and fileType != ''">
+            AND (
+            <choose>
+                <when test="fileType == 'xlsx'">
+                    file_type IN ('xlsx', 'xls')
+                </when>
+                <when test="fileType == 'docx'">
+                    file_type IN ('doc', 'docx')
+                </when>
+                <when test="fileType == 'pptx'">
+                    file_type IN ('ppt', 'pptx')
+                </when>
+                <when test="fileType == 'markdown'">
+                    file_type IN ('markdown', 'md')
+                </when>
+                <when test="fileType == 'other'">
+                    file_type NOT IN ('ppt', 'pptx','doc', 'docx','xlsx', 'xls','pdf','md','markdown')
+                </when>
+                <otherwise>
+                    file_type = #{fileType}
+                </otherwise>
+            </choose>
+            )
+        </if>
+        <if test="docType != null and docType != ''">
+            AND doc_type = #{docType}
+        </if>
+        <if test="sourceName != null and sourceName != ''">
+            AND source_name = #{sourceName}
+        </if>
+        <if test="sourceStatus != null and sourceStatus != ''">
+            AND source_status = #{sourceStatus}
+        </if>
+        <if test="switchStatus != null">
+            AND switch_status = #{switchStatus}
+        </if>
+        <if test="taskStatus != null and taskStatus != ''">
+            AND task_status = #{taskStatus}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR doc_id LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY update_time DESC
+    </select>
+
+    <!-- ==================== 个人知识库专用只读 SQL（与公共/共享方法完全隔离） ====================
+         个人知识库的数据隔离键为「doc_type='personal' + creator=当前工号」，且 datasetId 直接存放于
+         文档自身的 own_dataset_id 列（一人一个 dataset），不依赖 doc_type 表关联。
+         因此这里单独重写一组只读 SQL，公共链路（selectByDocId / selectByCondition 等）保持原语义不动。 -->
+
+    <!-- 个人知识库分页/条件查询：docType、creator 为必传过滤，channel/keyword 为可选过滤 -->
+    <select id="selectPersonalByCondition" resultType="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        SELECT
+        d.id,
+        d.doc_id as docId,
+        d.data_source_id as dataSourceId,
+        d.channel,
+        d.name,
+        d.file_type as fileType,
+        d.doc_type as docType,
+        d.doc_type_name as docTypeName,
+        d.source_name as sourceName,
+        d.source_status as sourceStatus,
+        d.switch_status as switchStatus,
+        d.task_status as taskStatus,
+        d.last_process_time as lastProcessTime,
+        d.md5,
+        d.file_size as fileSize,
+        d.creator,
+        d.create_time as createTime,
+        d.modifier,
+        d.update_time as updateTime,
+        d.visibility,
+        d.xsky_path as xskyPath,
+        d.bucket_name as bucketName,
+        d.bucket_path as bucketPath,
+        d.vector_enabled as vectorEnabled,
+        d.vector_id as vectorId,
+        d.metadata,
+        d.parent_doc_name as parentDocName,
+        d.is_attachment as isAttachment,
+        d.own_dataset_id as ownDatasetId,
+        d.status as status
+        FROM document d
+        WHERE d.status != 'deleted'
+        <if test="docType != null and docType != ''">
+            AND d.doc_type = #{docType}
+        </if>
+        <if test="creator != null and creator != ''">
+            AND d.creator = #{creator}
+        </if>
+        <if test="channel != null and channel != ''">
+            AND d.channel = #{channel}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (d.name LIKE CONCAT('%', #{keyword}, '%') OR d.doc_id LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY d.update_time DESC
+    </select>
+
+    <!-- 个人知识库按业务文档ID查询单条：仅取 doc_type='personal'，datasetId 取文档自身的 own_dataset_id -->
+    <select id="selectPersonalByDocId" resultType="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        SELECT
+        d.id,
+        d.doc_id as docId,
+        d.data_source_id as dataSourceId,
+        d.channel,
+        d.name,
+        d.file_type as fileType,
+        d.doc_type as docType,
+        d.doc_type_name as docTypeName,
+        d.source_name as sourceName,
+        d.source_status as sourceStatus,
+        d.switch_status as switchStatus,
+        d.task_status as taskStatus,
+        d.last_process_time as lastProcessTime,
+        d.md5,
+        d.file_size as fileSize,
+        d.creator,
+        d.create_time as createTime,
+        d.modifier,
+        d.update_time as updateTime,
+        d.visibility,
+        d.xsky_path as xskyPath,
+        d.bucket_name as bucketName,
+        d.bucket_path as bucketPath,
+        d.vector_enabled as vectorEnabled,
+        d.vector_id as vectorId,
+        d.metadata,
+        d.parent_doc_name as parentDocName,
+        d.is_attachment as isAttachment,
+        d.own_dataset_id as ownDatasetId,
+        d.status as status
+        FROM document d
+        WHERE d.doc_id = #{docId}
+        AND d.doc_type = 'personal'
+    </select>
+
+    <!-- 个人知识库按「业务文档ID + 渠道」查询单条（zsk 回调 AIDP 的提取/删除链路专用）。
+         与公共 findByDocIdAndChannel 隔离：不关联 doc_type 表（doc_type 表不登记 personal），
+         datasetId 取文档自身的 own_dataset_id（个人库一人一库，datasetId 落在文档自身列上）。 -->
+    <select id="selectPersonalByDocIdAndChannel" resultType="com.zzccaidp.dao.knowledgebase.DocumentDO">
+        SELECT
+        d.id,
+        d.doc_id as docId,
+        d.data_source_id as dataSourceId,
+        d.channel,
+        d.name,
+        d.file_type as fileType,
+        d.doc_type as docType,
+        d.doc_type_name as docTypeName,
+        d.source_name as sourceName,
+        d.source_status as sourceStatus,
+        d.switch_status as switchStatus,
+        d.task_status as taskStatus,
+        d.last_process_time as lastProcessTime,
+        d.md5,
+        d.file_size as fileSize,
+        d.creator,
+        d.create_time as createTime,
+        d.modifier,
+        d.update_time as updateTime,
+        d.visibility,
+        d.xsky_path as xskyPath,
+        d.bucket_name as bucketName,
+        d.bucket_path as bucketPath,
+        d.vector_enabled as vectorEnabled,
+        d.vector_id as vectorId,
+        d.metadata,
+        d.parent_doc_name as parentDocName,
+        d.is_attachment as isAttachment,
+        d.own_dataset_id as datasetId,
+        d.status as status
+        FROM document d
+        WHERE d.doc_id = #{docId}
+        AND d.channel = #{channel}
+        AND d.doc_type = 'personal'
+    </select>
+
+    <select id="search" resultMap="BaseResultMap">
+        SELECT<include refid="Base_Column_List"/>, status
+        FROM document
+        WHERE status != 'deleted'
+        <if test="dataSourceId != null">
+            AND data_source_id = #{dataSourceId}
+        </if>
+        <if test="taskStatus != null and taskStatus != ''">
+            AND task_status = #{taskStatus}
+        </if>
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        <if test="docType != null and docType != ''">
+            AND doc_type = #{docType}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR doc_id LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY update_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.zzccaidp.dao.knowledgebase.DocumentDO" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO document (
+        doc_id, data_source_id, channel, name, parent_doc_name, is_attachment, own_dataset_id, file_type, doc_type, doc_type_name,
+        source_name, switch_status, task_status, last_process_time, md5, file_size,
+        creator, modifier, visibility, xsky_path, bucket_name, bucket_path, vector_enabled, vector_id, metadata,
+        create_time, update_time, status
+        ) VALUES (
+        #{docId}, #{dataSourceId}, #{channel}, #{name}, #{parentDocName}, IFNULL(#{isAttachment}, 0), #{ownDatasetId}, #{fileType}, #{docType}, #{docTypeName},
+        #{sourceName}, #{switchStatus}, #{taskStatus}, #{lastProcessTime}, #{md5}, #{fileSize},
+        #{creator}, #{modifier}, #{visibility}, #{xskyPath}, #{bucketName}, #{bucketPath}, #{vectorEnabled},
+        #{vectorId}, #{metadata},
+        #{createTime}, #{updateTime}, #{status}
+        )
+    </insert>
+
+    <update id="updateDocType">
+        UPDATE document
+        SET doc_type = #{docType},
+        doc_type_name = #{docTypeName},
+        update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateTaskStatus">
+        UPDATE document
+        SET task_status = #{taskStatus},
+        update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateVectorStatus">
+        UPDATE document
+        SET vector_enabled = #{vectorEnabled},
+        switch_status = #{switchStatus},
+        update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateMetadata">
+        UPDATE document
+        SET metadata = #{metadata},
+        update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+  <update id="deleteById">
+    DELETE FROM document WHERE id = #{id}
+  </update>
+
+    <update id="batchDeleteByDocTypeId">
+        DELETE FROM document WHERE doc_type = #{docTypeId}
+    </update>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM document WHERE status != 'deleted'
+    </select>
+
+    <select id="countSearch" resultType="int">
+        SELECT COUNT(*) FROM document
+        WHERE status != 'deleted'
+        <if test="dataSourceId != null">
+            AND data_source_id = #{dataSourceId}
+        </if>
+        <if test="taskStatus != null and taskStatus != ''">
+            AND task_status = #{taskStatus}
+        </if>
+        <if test="fileType != null and fileType != ''">
+            AND file_type = #{fileType}
+        </if>
+        <if test="docType != null and docType != ''">
+            AND doc_type = #{docType}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR doc_id LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <update id="batchUpdateTaskStatus" parameterType="java.util.List">
+        UPDATE document
+        SET task_status = CASE id
+        <foreach collection="documents" item="item">
+            WHEN #{item.id} THEN #{item.taskStatus}
+        </foreach>
+        END
+        WHERE id IN
+        <foreach collection="documents" open="(" separator="," close=")" item="item">
+            #{item.id}
+        </foreach>
+    </update>
+    <select id="selectDocChannel" resultType="java.lang.String">
+        select name from data_source ds where channel in
+        (
+        select channel from document d where doc_type =#{docTypeCode} group by channel
+        )
+    </select>
+    <select id="selectTypeDistribution" resultType="com.alibaba.fastjson.JSONObject">
+        select doc_type,count(*) as summarize from document d where channel =#{channel} group by doc_type
+    </select>
+    <select id="selectDocCountByDocType" resultType="java.lang.Integer">
+        select count(*) from document d where doc_type =#{code}
+    </select>
+    <select id="selectDataSourceCountByDocType" resultType="java.lang.String">
+        select channel from document d where doc_type =#{code} group by channel
+    </select>
+    <select id="selectDocCountByChannel" resultType="java.lang.Integer">
+        select count(*) from document d where channel =#{channel}
+    </select>
+</mapper>

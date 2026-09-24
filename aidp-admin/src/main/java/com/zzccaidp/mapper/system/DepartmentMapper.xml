@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.DepartmentMapper">
+
+    <select id="selectDeptAllNew" resultType="com.zzccaidp.dao.bo.DepartmentBO">
+        select aa.ID as id, aa.DEPARTMENTNAME as name,aa.SUBCOMPANYID1 as pid, bb.SUBCOMPANYNAME as pidName,aa.SUPDEPID
+        as supDeptId
+        from hrmdepartment aa
+        left join hrmsubcompany bb
+        on aa.SUBCOMPANYID1 = bb.id
+        where (aa.CANCELED = 0 or aa.CANCELED is null)
+        and aa.SUPDEPID = 0
+        <if test="deptId != null and deptId != ''">
+            and aa.ID = cast(#{deptId} as unsigned)
+        </if>
+        order by aa.SHOWORDER
+    </select>
+
+
+</mapper>

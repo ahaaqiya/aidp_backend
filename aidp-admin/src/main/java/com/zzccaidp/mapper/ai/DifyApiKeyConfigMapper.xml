@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.ai.DifyApiKeyConfigMapper">
+
+    <select id="listDifyApiKey" resultType="com.zzccaidp.dao.ai.DifyApiKeyConfigDO">
+
+        select id,
+        key_name as keyName,
+        key_type as keyType,
+        key_desc as keyDesc,
+        create_time as createTime,
+        update_time as updateTime,
+        api_key as apiKey,
+        dify_app_type as difyAppType,
+        is_default as isDefault
+        from dify_api_key_config
+        <where>
+            <if test="keyType != null and keyType!=''">
+                key_type = #{keyType}
+            </if>
+            <if test="difyAppType != null and difyAppType!=''">
+                and dify_app_type = #{difyAppType}
+            </if>
+            <if test="keyName != null and keyName!=''">
+                and key_name like CONCAT('%',#{keyName},'%')
+            </if>
+            <if test="apiKey != null and apiKey!=''">
+                and api_key like CONCAT('%',#{apiKey},'%')
+            </if>
+        </where>
+        order by is_default desc, update_time desc
+    </select>
+</mapper>

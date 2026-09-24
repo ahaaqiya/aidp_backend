@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.knowledgebase.DataSourceMapper">
+    <resultMap id="BaseResultMap" type="com.zzccaidp.dao.knowledgebase.DataSourceDO">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="name" jdbcType="VARCHAR" property="name"/>
+        <result column="channel" jdbcType="VARCHAR" property="channel"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="document_count" jdbcType="INTEGER" property="documentCount"/>
+        <result column="last_sync_time" jdbcType="TIMESTAMP" property="lastSyncTime"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+        <result column="type_distribution" jdbcType="LONGVARCHAR" property="typeDistribution"/>
+        <result column="config" jdbcType="LONGVARCHAR" property="config"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, channel, description, document_count, last_sync_time, type_distribution, create_time, update_time,
+        config
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM data_source
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM data_source
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM data_source
+        WHERE name = #{name}
+    </select>
+
+    <select id="searchByKeyword" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM data_source
+        WHERE name LIKE CONCAT('%', #{keyword}, '%')
+        OR description LIKE CONCAT('%', #{keyword}, '%')
+        ORDER BY create_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.zzccaidp.dao.knowledgebase.DataSourceDO" useGeneratedKeys="true"
+            keyProperty="id">
+        INSERT INTO data_source (
+        name, channel, description, document_count, last_sync_time, type_distribution, create_time, update_time, config
+        ) VALUES (
+        #{name}, #{channel}, #{description}, #{documentCount}, #{lastSyncTime}, #{typeDistribution}, #{createTime},
+        #{updateTime}, #{config}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.zzccaidp.dao.knowledgebase.DataSourceDO">
+        UPDATE data_source
+        SET name = #{name},
+        channel = #{channel},
+        description = #{description},
+        document_count = #{documentCount},
+        last_sync_time = #{lastSyncTime},
+        type_distribution = #{typeDistribution},
+        update_time = #{updateTime},
+        config = #{config}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM data_source WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM data_source
+    </select>
+
+    <select id="existsByName" resultType="boolean">
+        SELECT EXISTS(SELECT 1 FROM data_source WHERE name = #{name})
+    </select>
+    <select id="selectByChannel" resultType="com.zzccaidp.dao.knowledgebase.DataSourceDO">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM data_source
+        where channel =#{channel}
+    </select>
+    <update id="updateUpdTimeByChannel">
+        update data_source set last_sync_time = #{date} where channel = #{channel}
+    </update>
+</mapper>

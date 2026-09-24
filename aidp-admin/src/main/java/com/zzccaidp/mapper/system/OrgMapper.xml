@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.OrgMapper">
+
+    <select id="selectOrgAllNew" resultType="com.zzccaidp.dao.bo.OrgBO">
+        select aa.ID as id ,aa.SUBCOMPANYNAME as name, aa.SUPSUBCOMID as pid,bb.SUBCOMPANYNAME as pidName from
+        hrmsubcompany aa
+        left join hrmsubcompany bb
+        on aa.SUPSUBCOMID = bb.id
+        where (aa.CANCELED = 0 or aa.CANCELED is null)
+        <if test="orgId != null and orgId != ''">
+            and aa.ID = cast(#{orgId} as unsigned)
+        </if>
+    </select>
+
+</mapper>

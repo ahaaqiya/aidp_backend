@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.UserMapper">
+
+    <select id="selectUserAll" resultType="com.zzccaidp.dao.system.UserDO">
+        select
+            b.id,
+            b.user_name as userName,
+            b.real_name as realName,
+            b.phone as phone,
+            b.email as email,
+            b.sex as sex,
+            b.status as status,
+            GROUP_CONCAT(distinct br.name separator ',') as roleNames,
+            GROUP_CONCAT(distinct br.id separator ',') as roleIds
+        from
+        base_user b
+            left join base_user_role r on
+            b.id = r.user_id
+            left join base_role br on
+            r.role_id = br.id
+        where b.del_flag = 0
+        and r.del_flag = 0
+        and br.del_flag = 0
+        <if test="realName != null and realName != ''">
+            AND b.real_name LIKE CONCAT ('%', #{realName}, '%')
+        </if>
+        group by b.id
+        order by b.id
+    </select>
+    <select id="selectUserByUserName" resultType="com.zzccaidp.dao.system.UserDO">
+        select
+            zu.id,
+            zu.del_flag,
+            zu.gmt_create,
+            zu.gmt_create_user,
+            zu.gmt_modified,
+            zu.gmt_modified_user,
+            zu.user_name,
+            zu.org_id,
+            zu.password,
+            zu.real_name,
+            zu.auth_type,
+            zu.avatar,
+            zu.phone,
+            zu.email,
+            zu.sex,
+            zu.status,
+            zu.dept_id,
+            h.DEPARTMENTNAME as dept_name
+        from
+            zzccaidp_user zu left join hrmdepartment h
+            on zu.dept_id =h.ID
+        where
+            zu.user_name = #{userName}
+    </select>
+
+    <insert id="batchInsterUser">
+        INSERT INTO zzccaidp_user (id, del_flag,gmt_create,gmt_create_user,gmt_modified,gmt_modified_user,user_name,org_id,password,real_name,auth_type,avatar,phone,email,sex,status,dept_id) values
+        <foreach collection="userDOList" separator="," item="item">
+            (
+            #{item.id},
+            #{item.delFlag},
+            #{item.gmtCreate},
+            #{item.gmtCreateUser},
+            #{item.gmtModified},
+            #{item.gmtModifiedUser},
+            #{item.userName},
+            #{item.orgId},
+            #{item.password},
+            #{item.realName},
+            #{item.authType},
+            #{item.avatar},
+            #{item.phone},
+            #{item.email},
+            #{item.sex},
+            #{item.status},
+            #{item.deptId}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

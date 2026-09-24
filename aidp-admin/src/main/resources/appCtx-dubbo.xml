@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
+       xsi:schemaLocation="
+		http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://dubbo.apache.org/schema/dubbo
+		http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
+
+    <dubbo:application name="zylcimp-aidp-admin"/>
+
+    <!-- 注册中心地址与 zsk 侧保持一致，由部署环境注入（-Ddubbo.registry.address 或配置中心）；
+         未注入时默认 N/A（无注册中心），check=false 保证应用可正常启动，仅调用时报无可用提供者 -->
+    <dubbo:registry address="${dubbo.registry.address:N/A}" check="false"/>
+
+    <!-- 个人库同步为长耗时任务（zsk 内部串行拉取 + 回调 AIDP 向量化），关闭重试避免重复推送 -->
+    <dubbo:consumer check="false" timeout="300000" retries="0"/>
+
+    <!-- zsk 文档推送接口：AIDP 点击「同步」时调用，触发 zsk 侧拉取并回调 AIDP addDocument -->
+    <dubbo:reference id="pullDocumentToRagFlow"
+                     interface="com.athena.api.PullDocumentToRagFlow"
+                     timeout="300000" retries="0"/>
+</beans>

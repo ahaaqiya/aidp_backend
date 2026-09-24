@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zzccaidp.mapper.system.UserRoleMapper">
+    <resultMap id="BaseResultMap" type="com.zzccaidp.dao.system.UserRoleDO">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="user_name" jdbcType="VARCHAR" property="userName"/>
+        <id column="role_id" jdbcType="BIGINT" property="roleId"/>
+        <result column="status" jdbcType="TINYINT" property="status"/>
+        <result column="gmt_create" jdbcType="TIMESTAMP" property="gmtCreate"/>
+        <result column="gmt_create_user" jdbcType="VARCHAR" property="gmtCreateUser"/>
+        <result column="gmt_modified" jdbcType="TIMESTAMP" property="gmtModified"/>
+        <result column="gmt_modified_user" jdbcType="VARCHAR" property="gmtModifiedUser"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultType="com.zzccaidp.dao.system.UserRoleDO">
+        select role_id from zzccaidp_user_role where user_id = #{userId}
+    </select>
+    <insert id="batchInsterUserRole">
+        insert into zzccaidp_user_role(id, gmt_create, gmt_create_user, gmt_modified, gmt_modified_user,
+        role_id, user_id) values
+        <foreach collection="userRoleDOList" separator="," item="item">
+            (#{item.id},#{item.gmtCreate},#{item.gmtCreateUser},#{item.gmtModified},#{item.gmtModifiedUser},#{item.roleId},#{item.userId})
+        </foreach>
+    </insert>
+
+    <select id="listRoleByUserId" resultType="com.zzccaidp.dao.system.RoleDO">
+        select zr.id ,zr.name,zur.user_id from zzccaidp_role zr ,zzccaidp_user_role zur where zr.id =zur.role_id
+        <if test="userIdList != null and userIdList.size>0">
+            and zur.user_id in
+            <foreach collection="userIdList" item="userId" close=")" open="(" separator=",">
+                #{userId}
+            </foreach>
+        </if>
+    </select>
+    <delete id="deleteRoleByUserId">
+        delete from zzccaidp_user_role where user_id = #{userId}
+    </delete>
+    <delete id="deleteRoleByRoleId">
+        delete from zzccaidp_user_role where role_id = #{roleId}
+    </delete>
+    <select id="listUserByRoleId" resultType="com.zzccaidp.dao.system.UserDO">
+        select zu.id ,zu.dept_id ,zu.real_name ,zu.user_name from zzccaidp_user_role zur ,zzccaidp_user zu where
+        zur.user_id =zu.id and role_id =#{roleId}
+    </select>
+</mapper>
