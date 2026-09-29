@@ -119,8 +119,10 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         try {
             for (DocumentAddIn documentAddIn : documentAddInList) {
                 // 摘要日志：完整入参由 doc_change_record 落库兜底，避免逐条全量 JSON 打爆日志
-                log.info("更新RAG知识库文档内容开始 docId={}, docName={}, channel={}",
-                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel());
+                // 个人知识库渠道追加归属人工号，便于从受理日志直接定位是哪个用户的同步批次
+                log.info("更新RAG知识库文档内容开始 docId={}, docName={}, channel={}{}",
+                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel(),
+                        personalOwnerLogSuffix(documentAddIn));
                 try {
                     extracted(documentAddIn);
                     success += 1;
@@ -223,8 +225,10 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         try {
             for (DocumentAddIn documentAddIn : documentAddInList) {
                 // 摘要日志：完整入参由 doc_change_record 落库兜底，避免逐条全量 JSON 打爆日志
-                log.info("更新RAG知识库文档内容开始(异步受理) docId={}, docName={}, channel={}",
-                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel());
+                // 个人知识库渠道追加归属人工号，便于从受理日志直接定位是哪个用户的同步批次
+                log.info("更新RAG知识库文档内容开始(异步受理) docId={}, docName={}, channel={}{}",
+                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel(),
+                        personalOwnerLogSuffix(documentAddIn));
                 try {
                     if ("delete".equals(documentAddIn.getDocOperatorType())) {
                         // delete 保持全同步：RagFlow 与 DB 删除顺序耦合（先删 DB 会导致反查不到向量id），且单条调用较快
@@ -660,6 +664,22 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             documentDO.setModifier(userCode);
         }
         documentDO.setOwnDatasetId(resolvePersonalDatasetId(documentAddIn, userCode));
+    }
+
+    /**
+     * 受理日志的个人知识库归属人后缀：仅个人库渠道返回「, 归属人=工号」，其余渠道返回空串。
+     * <p>
+     * 开放接口为共用 api-key 认证，回调线程无发起人上下文，同步批次归属只能靠文档自证；
+     * 公共渠道的 metadata.permission 为可见用户列表（首元素可能是 ALL 等），并非归属人，故不打印避免误导。
+     *
+     * @param documentAddIn 文档推送入参
+     * @return 日志后缀片段
+     */
+    private String personalOwnerLogSuffix(DocumentAddIn documentAddIn) {
+        if (!isPersonalChannel(documentAddIn.getChannel())) {
+            return "";
+        }
+        return ", 归属人=" + resolvePersonalUserCode(documentAddIn);
     }
 
     /**
