@@ -119,7 +119,8 @@ public class DocTypeService {
             return false;
         }
         try {
-            if(docType.getDatasetId() != null && !docType.getDatasetId().isEmpty()) {
+            String datasetId = docType.getDatasetId();
+            if(datasetId != null && !datasetId.isEmpty()) {
                 boolean success = ragFlowService.deleteRagDataset(docType);
                 if (!success) {
                     log.error("删除ragFlow数据集失败");
@@ -128,6 +129,16 @@ public class DocTypeService {
                 }
                 docType.setDatasetId(null);
                 docTypeMapper.updateByPrimaryKey(docType);
+
+                // RagFlow 删除 dataset 仅清向量与自身 DB 记录，不删其存储中的物理文件
+                // （ragflow-0.27.1 internal/service/dataset/crud.go#deleteDataset 无 storage 删除调用）。
+                // 本部署为独立桶形态：每个 dataset 独占「桶名=dataset_id」的桶，
+                // 整桶清删彻底回收（含解析图片/chunk图片）；失败仅告警不回滚（残留仅占存储）
+                try {
+                    amazonS3Util.purgeRagFlowDatasetFiles(datasetId);
+                } catch (Exception purgeEx) {
+                    log.warn("清理 ragflow 存储独立桶失败（残留仅占存储，可人工处理），datasetId={}", datasetId, purgeEx);
+                }
             }
 
             //删除关联文档
@@ -136,12 +147,22 @@ public class DocTypeService {
             List<DocumentDO> documentDOList = documentMapper.selectByCondition(queryDO);
             List<String> fastDfsFileIdList = documentDOList.stream().
                     map(DocumentDO::getBucketPath)
+                    .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
-            amazonS3Util.batchDeleteFile(fastDfsFileIdList,backName);
+            if (!fastDfsFileIdList.isEmpty()) {
+                amazonS3Util.batchDeleteFile(fastDfsFileIdList, backName);
+            }
+            //变更历史记录保留（doc_change_record 作为推送审计痕迹，不随类型删除清理）
+            List<String> docIds = documentDOList.stream()
+                    .map(DocumentDO::getDocId)
+                    .filter(StringUtils::isNotBlank)
+                    .collect(Collectors.toList());
             documentMapper.batchDeleteByDocTypeId(docType.getCode());
             //删除数据集
             docTypeMapper.deleteById(id);
 
+            log.info("删除文档类型及关联数据完成, docType={}, 文档数={}, 变更记录保留docId数={}, ragflow存储已清理={}",
+                    docType.getCode(), documentDOList.size(), docIds.size(), datasetId != null && !datasetId.isEmpty());
             return true;
         } catch (Exception e) {
             log.error("删除文档失败",e );

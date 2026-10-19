@@ -142,7 +142,11 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
                                 // 异常继续上抛计数为失败，zsk 按失败结果（resultcode/docIds）自动重推（update 链路先删旧向量再重传）
                                 ragVector(documentAddIn);
                             } catch (Exception vectorException) {
+                                // 向量化失败落失败表留存原因（document 表只能看到状态看不到原因），
+                                // 同时回写 task_status=failed，异常上抛计数为失败，zsk 按结果自动重推
                                 markVectorFailed(documentAddIn);
+                                docPushFailRecordService.recordFail(documentAddIn,
+                                        DocPushFailRecordService.STAGE_VECTOR, vectorException);
                                 throw vectorException;
                             }
                         }
@@ -313,9 +317,12 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             } catch (Exception e) {
                 vectorFail += 1;
                 failedDocIdsBuilder.append(documentAddIn.getDocId()).append(",");
-                // 落库已成功，向量化失败不落失败表：回写 task_status=failed（document 表可见），日志补全量入参供排查 RagFlow 问题
+                // 向量化失败：回写 task_status=failed（document 表可见状态），日志补全量入参，
+                // 并落 doc_push_fail_record 留存失败原因（状态表看不到原因，日志滚动即失）
                 log.error("后台向量化失败, documentAddIn=[{}]", JSONObject.toJSONString(documentAddIn), e);
                 markVectorFailed(documentAddIn);
+                docPushFailRecordService.recordFail(documentAddIn,
+                        DocPushFailRecordService.STAGE_VECTOR, e);
             }
         }
         // 有失败时在批次摘要中列出失败 docId（单批上限受开放接口 max-doc-count 约束，无超长风险）

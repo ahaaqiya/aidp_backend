@@ -47,7 +47,7 @@ public class DocPushFailRecordDO {
     @Column(name = "aws_file_path")
     private String awsFilePath;
 
-    /** 失败阶段：accept-受理落库失败 */
+    /** 失败阶段：accept-受理落库失败 / vector-向量化失败（仅自动链路） */
     @Column(name = "fail_stage")
     private String failStage;
 
