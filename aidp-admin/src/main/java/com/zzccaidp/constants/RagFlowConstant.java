@@ -7,6 +7,8 @@ package com.zzccaidp.constants;
 public class RagFlowConstant {
     public final static Integer HTTP_SUCCESS = 0;
 
+    public final static Integer HTTP_TARGET_NOT_FOUND = 102;
+
     public final static String UPLOAD_DOCUMENT_URI = "/api/v1/datasets/{dataset_id}/documents";
 
     public final static String UPDATE_DOCUMENT_URI = "/api/v1/datasets/{dataset_id}/documents/{document_id}";

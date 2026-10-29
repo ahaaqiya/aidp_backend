@@ -213,10 +213,21 @@ public class RagFlowServiceImpl implements RagFlowService {
         if (StringUtil.isNotBlank(vecId) && StringUtil.isNotBlank(datasetId)) {
             res = ragFlowIntegrationService.deleteRagDocument(vecId, datasetId);
         }
-        if (ObjectUtils.isEmpty(res) || !RagFlowConstant.HTTP_SUCCESS.equals(res.getCode())) {
+        if (ObjectUtils.isEmpty(res)) {
+            // 请求异常（网络超时、服务不可达等）：保持失败，由上层阻断并提示
             return false;
         }
-        return true;
+        Integer code = res.getCode();
+        if (RagFlowConstant.HTTP_SUCCESS.equals(code)) {
+            return true;
+        }
+        if (RagFlowConstant.HTTP_TARGET_NOT_FOUND.equals(code)) {
+            // code=102：ragflow 侧文档已不存在（不在该 dataset / dataset 已删除或不可访问）。
+            // 语义等价于「已删除」，此处按幂等成功返回，避免本地 vector_id 残留导致文档永久无法删除。
+            log.warn("ragflow侧文档已不存在，按已删除处理，vecId={}, datasetId={}, 响应：{}", vecId, datasetId, res);
+            return true;
+        }
+        return false;
     }
 
     private boolean deleteRagDataset(String datasetId) {
@@ -224,10 +235,20 @@ public class RagFlowServiceImpl implements RagFlowService {
         if (StringUtil.isNotBlank(datasetId) && StringUtil.isNotBlank(datasetId)) {
             res = ragFlowIntegrationService.deleteRagDataset(datasetId);
         }
-        if (ObjectUtils.isEmpty(res) || !RagFlowConstant.HTTP_SUCCESS.equals(res.getCode())) {
+        if (ObjectUtils.isEmpty(res)) {
+            // 请求异常（网络超时、服务不可达等）：保持失败，由上层阻断并提示
             return false;
         }
-        return true;
+        Integer code = res.getCode();
+        if (RagFlowConstant.HTTP_SUCCESS.equals(code)) {
+            return true;
+        }
+        if (RagFlowConstant.HTTP_TARGET_NOT_FOUND.equals(code)) {
+            // code=102：ragflow 侧 dataset 已不存在或不可访问，同样按幂等成功处理
+            log.warn("ragflow侧数据集已不存在，按已删除处理，datasetId={}, 响应：{}", datasetId, res);
+            return true;
+        }
+        return false;
     }
 
 

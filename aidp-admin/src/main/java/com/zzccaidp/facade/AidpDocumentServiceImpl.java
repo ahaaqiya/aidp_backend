@@ -24,6 +24,7 @@ import com.zzccaidp.mapper.knowledgebase.DataSourceMapper;
 import com.zzccaidp.mapper.knowledgebase.DocumentMapper;
 import com.zzccaidp.out.DocumentAddOut;
 import com.zzccaidp.service.knowledgebase.DocChangeRecordService;
+import com.zzccaidp.service.knowledgebase.DocPushFailRecordService;
 import com.zzccaidp.service.knowledgebase.DocumentService;
 import com.zzccaidp.service.knowledgebase.PersonalDatasetService;
 import com.zzccaidp.service.ragFlow.RagFlowService;
@@ -69,17 +70,15 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
      */
     private static final String PERSONAL_DOC_TYPE = "personal";
 
-    /** 失败明细单条原因最大长度：防止超长异常栈信息冲垮返回体 */
-    private static final int FAIL_DETAIL_ITEM_MAX_LEN = 80;
-
-    /** 失败明细总最大长度：整批全失败时也要控制 resultmsg 体量（dubbo 传输 + 前端弹窗展示） */
-    private static final int FAIL_DETAIL_TOTAL_MAX_LEN = 500;
-
     @Autowired
     private RagFlowService ragFlowService;
 
     @Autowired
     private DocChangeRecordService docChangeRecordService;
+
+    /** 文档推送失败记录服务：单文档失败现场落库（doc_push_fail_record），替代仅日志可查 */
+    @Autowired
+    private DocPushFailRecordService docPushFailRecordService;
 
     @Autowired
     private AmazonS3Util amazonS3Util;
@@ -114,24 +113,51 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         int success = 0;
         int fail = 0;
         StringBuilder stringBuilder = new StringBuilder();
-        // 失败明细：按「docId:原因」逐条拼接，随 resultmsg 一起返回，供调用方（zsk）透传前端同步状态展示
-        StringBuilder failDetailBuilder = new StringBuilder();
         try {
             for (DocumentAddIn documentAddIn : documentAddInList) {
                 // 摘要日志：完整入参由 doc_change_record 落库兜底，避免逐条全量 JSON 打爆日志
-                log.info("更新RAG知识库文档内容开始 docId={}, docName={}, channel={}",
-                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel());
+                // 个人知识库渠道追加归属人工号，便于从受理日志直接定位是哪个用户的同步批次
+                log.info("更新RAG知识库文档内容开始 docId={}, docName={}, channel={}{}",
+                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel(),
+                        personalOwnerLogSuffix(documentAddIn));
                 try {
-                    extracted(documentAddIn);
+                    if ("delete".equals(documentAddIn.getDocOperatorType())) {
+                        // delete：RagFlow 与 DB 删除顺序耦合（先删 DB 会导致反查不到向量id），保持整段同步；
+                        // 失败走外层 catch，原因随响应返回 zsk 由其自动重推，不落失败表（文档仍留在 document 表，状态可见）
+                        extracted(documentAddIn);
+                    } else {
+                        // add/update：落库段与向量化段拆分，失败分别处理：
+                        // 落库段失败 → document 表不可见，落 doc_push_fail_record 供重推排查
+                        DocumentDO documentDO;
+                        try {
+                            documentDO = persistDocument(documentAddIn);
+                        } catch (Exception persistException) {
+                            docPushFailRecordService.recordFail(documentAddIn,
+                                    DocPushFailRecordService.STAGE_ACCEPT, persistException);
+                            throw persistException;
+                        }
+                        if (!"pending_document".equals(documentDO.getDocType())) {
+                            try {
+                                // 向量化段失败 → 不落失败表：回写 task_status=failed（document 表可见，与开放接口后台链路一致），
+                                // 异常继续上抛计数为失败，zsk 按失败结果（resultcode/docIds）自动重推（update 链路先删旧向量再重传）
+                                ragVector(documentAddIn);
+                            } catch (Exception vectorException) {
+                                // 向量化失败落失败表留存原因（document 表只能看到状态看不到原因），
+                                // 同时回写 task_status=failed，异常上抛计数为失败，zsk 按结果自动重推
+                                markVectorFailed(documentAddIn);
+                                docPushFailRecordService.recordFail(documentAddIn,
+                                        DocPushFailRecordService.STAGE_VECTOR, vectorException);
+                                throw vectorException;
+                            }
+                        }
+                    }
                     success += 1;
                 } catch (Exception e) {
-                    // 失败文档不落 doc_change_record，日志是唯一现场：补打全量入参
+                    // 失败文档不落 doc_change_record；落库段失败已落 doc_push_fail_record，此处日志同步保留全量入参现场
                     // 捕获所有异常（而非仅 BusinessException），避免单文档异常冒泡导致整批处理中断
                     log.error("文档加入RagFlow向量数据库失败, documentAddIn=[{}]", JSONObject.toJSONString(documentAddIn), e);
                     fail += 1;
                     stringBuilder.append(documentAddIn.getDocId()).append(",");
-                    failDetailBuilder.append(documentAddIn.getDocId()).append(":")
-                            .append(resolveFailReason(e)).append("；");
                 }
             }
             if(!documentAddInList.isEmpty()){
@@ -144,13 +170,9 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
                 documentAddOut.setResultmsg(SUCCESS.getErrMsg());
                 documentAddOut.setResultcode(SUCCESS.getErrCode());
             } else {
-                // 失败原因明细附在 resultmsg 尾部（不加 DTO 新字段，zsk 侧旧 jar 天然兼容），总量截断保护
-                String failDetails = failDetailBuilder.toString();
-                if (failDetails.endsWith("；")) {
-                    failDetails = failDetails.substring(0, failDetails.length() - 1);
-                }
-                documentAddOut.setResultmsg(M0021.getErrMsg() + "，成功" + success + "条，失败" + fail + "条"
-                        + buildFailDetailMsg(failDetails));
+                // 失败明细不再拼入 resultmsg：单条原因改为日志输出 + doc_push_fail_record（仅落库失败）留存，
+                // 避免 zsk 侧旧 jar 因超长明细撑爆返回体
+                documentAddOut.setResultmsg(M0021.getErrMsg() + "，成功" + success + "条，失败" + fail + "条");
                 documentAddOut.setResultcode(M0021.getErrCode());
             }
             // 去掉失败 docIds 尾部多余逗号
@@ -173,37 +195,14 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
     }
 
     /**
-     * 提取单条文档处理失败的可读原因。
-     * 业务异常取 errMsg（含具体校验/缺失信息），其他异常取 getMessage，均拿不到时给固定文案，
-     * 避免失败明细里出现空原因；单条超长时截断。
-     */
-    private String resolveFailReason(Exception e) {
-        if (e instanceof BusinessException) {
-            String errMsg = ((BusinessException) e).getErrMsg();
-            if (errMsg != null && !errMsg.isEmpty()) {
-                return truncate(errMsg, FAIL_DETAIL_ITEM_MAX_LEN);
-            }
-        }
-        String msg = e.getMessage();
-        return (msg == null || msg.isEmpty()) ? "未知异常" : truncate(msg, FAIL_DETAIL_ITEM_MAX_LEN);
-    }
-
-    /** 拼接失败明细文案：拼在 resultmsg 尾部，总量超过上限时截断，防止整批失败撑爆返回体。 */
-    private String buildFailDetailMsg(String failDetails) {
-        if (failDetails == null || failDetails.isEmpty()) {
-            return "";
-        }
-        return "（失败明细：" + truncate(failDetails, FAIL_DETAIL_TOTAL_MAX_LEN) + "）";
-    }
-
-    /**
      * 文档推送更新（异步向量化版，供 HTTP 开放接口使用）。
      * <p>
      * 与同步版 {@link #addDocument(List)} 的区别：add/update 文档仅同步完成
      * 「校验 + S3 转存 + 变更记录 + 落库」即计入成功并快速返回，最耗时的 RagFlow 向量化
      * 由 {@code ragVectorExecutor} 单线程池在后台逐条补做；delete 仍走同步版全流程。
      * <p>
-     * 返回语义：successSum/failSum 与失败明细仅反映「落库受理」结果；
+     * 返回语义：successSum/failSum 仅反映「落库受理」结果（单条失败原因不拼入 resultmsg，
+     * 见日志与 doc_push_fail_record）；
      * 后台向量化失败通过日志与管理后台文档列表的 task_status=failed 暴露，
      * 可由源系统再次推送同文档自愈（update 链路先删旧向量再重传）。
      * <p>
@@ -218,13 +217,13 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         // 落库受理成功、待后台向量化的文档清单（pending_document 类型不向量化，不进入该清单）
         List<DocumentAddIn> vectorPendingList = new ArrayList<>();
         StringBuilder failedIdsBuilder = new StringBuilder();
-        // 失败明细：按「docId:原因」逐条拼接，随 resultmsg 一起返回，供调用方透传展示
-        StringBuilder failDetailBuilder = new StringBuilder();
         try {
             for (DocumentAddIn documentAddIn : documentAddInList) {
                 // 摘要日志：完整入参由 doc_change_record 落库兜底，避免逐条全量 JSON 打爆日志
-                log.info("更新RAG知识库文档内容开始(异步受理) docId={}, docName={}, channel={}",
-                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel());
+                // 个人知识库渠道追加归属人工号，便于从受理日志直接定位是哪个用户的同步批次
+                log.info("更新RAG知识库文档内容开始(异步受理) docId={}, docName={}, channel={}{}",
+                        documentAddIn.getDocId(), documentAddIn.getDocName(), documentAddIn.getChannel(),
+                        personalOwnerLogSuffix(documentAddIn));
                 try {
                     if ("delete".equals(documentAddIn.getDocOperatorType())) {
                         // delete 保持全同步：RagFlow 与 DB 删除顺序耦合（先删 DB 会导致反查不到向量id），且单条调用较快
@@ -238,12 +237,11 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
                     }
                     success += 1;
                 } catch (Exception e) {
-                    // 受理（落库）失败：捕获所有异常避免单文档异常中断整批，日志补全量入参
+                    // 受理（落库）失败：捕获所有异常避免单文档异常中断整批，完整现场落 doc_push_fail_record 供排查
                     log.error("文档受理落库失败, documentAddIn=[{}]", JSONObject.toJSONString(documentAddIn), e);
+                    docPushFailRecordService.recordFail(documentAddIn, DocPushFailRecordService.STAGE_ACCEPT, e);
                     fail += 1;
                     failedIdsBuilder.append(documentAddIn.getDocId()).append(",");
-                    failDetailBuilder.append(documentAddIn.getDocId()).append(":")
-                            .append(resolveFailReason(e)).append("；");
                 }
             }
             if (!documentAddInList.isEmpty()) {
@@ -258,12 +256,7 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
                 documentAddOut.setResultcode(SUCCESS.getErrCode());
             } else {
                 // 落库失败原因明细附在 resultmsg 尾部，总量截断保护（与同步版一致）
-                String failDetails = failDetailBuilder.toString();
-                if (failDetails.endsWith("；")) {
-                    failDetails = failDetails.substring(0, failDetails.length() - 1);
-                }
-                documentAddOut.setResultmsg(M0021.getErrMsg() + "，成功" + success + "条，失败" + fail + "条"
-                        + buildFailDetailMsg(failDetails));
+                documentAddOut.setResultmsg(M0021.getErrMsg() + "，成功" + success + "条，失败" + fail + "条");
                 documentAddOut.setResultcode(M0021.getErrCode());
             }
             // 去掉失败 docIds 尾部多余逗号
@@ -324,9 +317,12 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             } catch (Exception e) {
                 vectorFail += 1;
                 failedDocIdsBuilder.append(documentAddIn.getDocId()).append(",");
-                // 失败文档日志补全量入参，便于排查 RagFlow 上传/解析问题
+                // 向量化失败：回写 task_status=failed（document 表可见状态），日志补全量入参，
+                // 并落 doc_push_fail_record 留存失败原因（状态表看不到原因，日志滚动即失）
                 log.error("后台向量化失败, documentAddIn=[{}]", JSONObject.toJSONString(documentAddIn), e);
                 markVectorFailed(documentAddIn);
+                docPushFailRecordService.recordFail(documentAddIn,
+                        DocPushFailRecordService.STAGE_VECTOR, e);
             }
         }
         // 有失败时在批次摘要中列出失败 docId（单批上限受开放接口 max-doc-count 约束，无超长风险）
@@ -357,14 +353,6 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         } catch (Exception e) {
             log.warn("向量化失败状态回写异常, docId={}", documentAddIn.getDocId(), e);
         }
-    }
-
-    /** 按最大长度截断字符串，超长时尾部补省略号标识 */
-    private String truncate(String text, int maxLen) {
-        if (text.length() <= maxLen) {
-            return text;
-        }
-        return text.substring(0, maxLen) + "...";
     }
 
     @Transactional
@@ -427,7 +415,7 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             }
             return true;
         } catch (Exception e) {
-            // 失败文档不落 doc_change_record，日志是唯一现场：补打全量入参
+            // 失败文档不落 doc_change_record，也不落失败表（落库早已成功，document 表状态可见），日志补全量入参
             log.error("文档向量化失败, documentAddIn=[{}]", JSONObject.toJSONString(documentAddIn), e);
             return false;
         }
@@ -660,6 +648,22 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             documentDO.setModifier(userCode);
         }
         documentDO.setOwnDatasetId(resolvePersonalDatasetId(documentAddIn, userCode));
+    }
+
+    /**
+     * 受理日志的个人知识库归属人后缀：仅个人库渠道返回「, 归属人=工号」，其余渠道返回空串。
+     * <p>
+     * 开放接口为共用 api-key 认证，回调线程无发起人上下文，同步批次归属只能靠文档自证；
+     * 公共渠道的 metadata.permission 为可见用户列表（首元素可能是 ALL 等），并非归属人，故不打印避免误导。
+     *
+     * @param documentAddIn 文档推送入参
+     * @return 日志后缀片段
+     */
+    private String personalOwnerLogSuffix(DocumentAddIn documentAddIn) {
+        if (!isPersonalChannel(documentAddIn.getChannel())) {
+            return "";
+        }
+        return ", 归属人=" + resolvePersonalUserCode(documentAddIn);
     }
 
     /**

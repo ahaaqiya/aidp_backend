@@ -9,6 +9,7 @@ import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
@@ -40,7 +41,9 @@ public class ControllerLog {
             if (arg instanceof MultipartFile || arg instanceof MultipartFile[]) {
                 continue;
             }
-            if (arg instanceof HttpServletResponse) {
+            // ServletRequest/Response 等容器对象不可被 fastjson 序列化（如 RequestFacade.getAsyncContext 会抛异常），
+            // 必须跳过，否则切面在进入业务方法前就抛 JSONException，导致接口直接返回系统异常
+            if (arg instanceof HttpServletRequest || arg instanceof HttpServletResponse) {
                 continue;
             }
             logMessage.append(JSON.toJSONString(arg)).append(",");

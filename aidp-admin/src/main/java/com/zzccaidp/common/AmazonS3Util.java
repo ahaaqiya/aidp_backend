@@ -37,6 +37,42 @@ public class AmazonS3Util {
         log.info("删除文档成功，文档ID：{}", fastDfsFileId);
     }
 
+    /**
+     * 清理 RagFlow 数据集的独立桶（整桶清空后删除桶本身）。
+     *
+     * <p>背景：RagFlow 0.27.x 删除 dataset 时仅清理向量与自身 DB 记录，不删物理文件
+     * （源码 internal/service/dataset/crud.go#deleteDataset 无任何 storage 删除调用；
+     * 单文档删除链路 document_crud.go#L533 有 removeObjectBestEffort，孤儿仅产生于整库删除）。
+     * 本部署为独立桶形态（RagFlow storage 未配置统一桶，minio.go#resolveBucketAndPath
+     * bucket 参数即真实桶名）：每个 dataset 独占「桶名=dataset_id」的桶，
+     * 桶内含文档文件与解析/chunk 图片，整桶清删即彻底回收。</p>
+     *
+     * <p>实现：S3 协议删桶前必须先清空对象——分页列出全部对象（1000/页）逐批删除，
+     * 全部清空后调用 deleteBucket 删除桶本身。</p>
+     *
+     * @param datasetId 要清理的 RagFlow 数据集ID（即桶名）
+     * @return 删除的对象总数
+     */
+    public int purgeRagFlowDatasetFiles(String datasetId) {
+        ListObjectsV2Request listRequest = new ListObjectsV2Request().withBucketName(datasetId);
+        ListObjectsV2Result listResult;
+        int totalDeleted = 0;
+        do {
+            listResult = amazonS3.listObjectsV2(listRequest);
+            List<String> keys = listResult.getObjectSummaries().stream()
+                    .map(S3ObjectSummary::getKey)
+                    .collect(Collectors.toList());
+            if (!keys.isEmpty()) {
+                batchDeleteFile(keys, datasetId);
+                totalDeleted += keys.size();
+            }
+            listRequest.setContinuationToken(listResult.getNextContinuationToken());
+        } while (listResult.isTruncated());
+        amazonS3.deleteBucket(datasetId);
+        log.info("清空并删除 ragflow 数据集独立桶成功，桶名：{}，删除对象数：{}", datasetId, totalDeleted);
+        return totalDeleted;
+    }
+
     public void batchDeleteFile(List<String> fastDfsFileIdList, String backName) {
         int size = fastDfsFileIdList.size();
         for(int start = 0; start<size ; start += MAX_BATCH){
