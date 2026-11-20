@@ -55,6 +55,12 @@ public class DocumentDO {
     private String docTypeName;
 
     /**
+     * 分片方式（RagFlow Built-in：naive/laws/paper/qa 等，由 Python 大模型判定后写回）
+     */
+    @Column(name = "shard_type")
+    private String shardType;
+
+    /**
      * 来源名称
      */
     @Column(name = "source_name")
