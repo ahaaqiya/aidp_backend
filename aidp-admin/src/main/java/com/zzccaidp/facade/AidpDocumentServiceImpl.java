@@ -367,6 +367,7 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
         message.setOldVectorId(sourceDoc.getVectorId() == null ? "" : sourceDoc.getVectorId());
         // 个人库/制度库渠道分类由 Java 落库定死，Python 端跳过分类判定
         message.setSkipClassify(isPersonalChannel(sourceDoc.getChannel()) || "oicc".equals(sourceDoc.getChannel()));
+        message.setDocType(sourceDoc.getDocType());
         message.setRetryCount(0);
         addTaskToQueue(message);
     }

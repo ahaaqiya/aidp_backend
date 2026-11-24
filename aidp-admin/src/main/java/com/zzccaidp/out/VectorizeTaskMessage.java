@@ -43,4 +43,7 @@ public class VectorizeTaskMessage implements Serializable {
 
     /** 重试次数（投递时固定为 0，Python 端消费重试时自增） */
     private Integer retryCount;
+
+    /** 知识库类型 */
+    private String docType;
 }
