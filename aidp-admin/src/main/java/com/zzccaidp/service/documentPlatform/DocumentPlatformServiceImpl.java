@@ -184,6 +184,8 @@ public class DocumentPlatformServiceImpl implements DocumentPlatformService {
         switch (docPreviewSourceEnum) {
             case KNOW:
                 return this.getKnowFileInfo(fileId);
+            case KB_ROW:
+                return this.getKnowFileInfoById(fileId);
             case SYSTEM:
                 return this.getSystemFileInfo(fileId);
             default:
@@ -230,6 +232,28 @@ public class DocumentPlatformServiceImpl implements DocumentPlatformService {
             return fileInfoDTO;
         }
         log.error("文件不存在，fileId:{}", docId);
+        throw new BusinessException(ErrCodeEnum.M7102);
+    }
+
+    /**
+     * 按 document 表主键 id 定位知识库文档（2026-11-23 新增，KB_ROW 源）。
+     * 与 getKnowFileInfo（vector_id 定位）并列：模板检索等不依赖向量化的链路
+     * 直接传 document.id，未向量化文档同样可走统一文档中台预览。
+     */
+    private FileInfoDTO getKnowFileInfoById(String rowId) {
+        DocumentDO documentDO = documentMapper.selectByPrimaryKey(Long.valueOf(rowId));
+        if (Objects.nonNull(documentDO)) {
+            FileInfoDTO fileInfoDTO = new FileInfoDTO();
+            fileInfoDTO.setFileId(String.valueOf(documentDO.getId()));
+            fileInfoDTO.setFileName(documentDO.getName());
+            fileInfoDTO.setCreateTime(documentDO.getCreateTime());
+            fileInfoDTO.setCreateUser(documentDO.getCreator());
+            fileInfoDTO.setFileSize(documentDO.getFileSize());
+            fileInfoDTO.setBucketName(documentDO.getBucketName());
+            fileInfoDTO.setPath(documentDO.getBucketPath());
+            return fileInfoDTO;
+        }
+        log.error("文件不存在，rowId:{}", rowId);
         throw new BusinessException(ErrCodeEnum.M7102);
     }
 

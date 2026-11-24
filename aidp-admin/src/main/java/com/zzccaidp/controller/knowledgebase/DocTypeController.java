@@ -2,6 +2,7 @@ package com.zzccaidp.controller.knowledgebase;
 
 import cn.hutool.core.bean.BeanUtil;
 import com.zzccaidp.dao.knowledgebase.DocTypeDO;
+import com.zzccaidp.enums.ChunkMethodEnum;
 import com.zzccaidp.mapper.knowledgebase.DocumentMapper;
 import com.zzccaidp.service.knowledgebase.DocTypeService;
 import com.zzccaidp.vo.PageRequest;
@@ -9,12 +10,15 @@ import com.zzccaidp.vo.PageResponse;
 import com.zzccaidp.vo.knowledgebase.DocTypeIn;
 import com.zzccaidp.vo.knowledgebase.DocTypeOut;
 import com.zzccaidp.vo.knowledgebase.DocTypeResponse;
+import com.zzccaidp.vo.knowledgebase.ChunkMethodResponse;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -94,6 +98,23 @@ public class DocTypeController {
         List<DocTypeDO> result = docTypeService.search(keyword);
         List<DocTypeOut> output = BeanUtil.copyToList(result, DocTypeOut.class);
         return DocTypeResponse.success(output);
+    }
+
+    /**
+     * 切片方式字典（与 ragflow chunk_method 对齐），供前端创建/编辑资源库下拉选择，
+     * 数据源唯一为本接口，前端不内置静态字典。
+     */
+    @GetMapping("/chunk_methods")
+    public ChunkMethodResponse chunkMethods() {
+        List<Map<String, String>> options = Arrays.stream(ChunkMethodEnum.values())
+                .map(method -> {
+                    Map<String, String> option = new LinkedHashMap<>();
+                    option.put("value", method.getValue());
+                    option.put("label", method.getLabel());
+                    return option;
+                })
+                .collect(Collectors.toList());
+        return ChunkMethodResponse.success(options);
     }
 
     @PostMapping("/chunk-method/update")

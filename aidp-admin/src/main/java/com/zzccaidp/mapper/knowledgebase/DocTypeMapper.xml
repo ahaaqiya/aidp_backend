@@ -57,9 +57,9 @@
 
   <insert id="insert" parameterType="com.zzccaidp.dao.knowledgebase.DocTypeDO">
     INSERT INTO doc_type (
-    id, code, name, description, count, chunk_method, source_count, update_time, sources
+    id, code, name, description, count, chunk_method, source_count, update_time, sources, dataset_id
     ) VALUES (
-    #{id}, #{code}, #{name}, #{description}, #{count}, #{chunkMethod}, #{sourceCount}, #{updateTime}, #{sources}
+    #{id}, #{code}, #{name}, #{description}, #{count}, #{chunkMethod}, #{sourceCount}, #{updateTime}, #{sources}, #{datasetId}
     )
   </insert>
 
