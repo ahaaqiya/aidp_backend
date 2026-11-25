@@ -37,4 +37,6 @@ public class DocumentOut {
     private String parentDocName;
     /** 是否附件：0-正文，1-附件 */
     private Integer isAttachment;
+    /** 切片方式：Python/zsk 推送侧直接写库（Java 端不写入），取值与 ragflow chunk_method 对齐，空表示未记录 */
+    private String shardType;
 }
