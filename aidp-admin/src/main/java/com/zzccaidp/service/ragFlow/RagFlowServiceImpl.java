@@ -6,6 +6,7 @@ import com.alibaba.fastjson.TypeReference;
 import com.zzccaidp.constants.RagFlowConstant;
 import com.zzccaidp.dao.knowledgebase.DocTypeDO;
 import com.zzccaidp.dao.knowledgebase.DocumentDO;
+import com.zzccaidp.enums.ChunkMethodEnum;
 import com.zzccaidp.enums.ErrCodeEnum;
 import com.zzccaidp.exception.BusinessException;
 import com.zzccaidp.facade.AidpDocumentServiceImpl;
@@ -309,7 +310,16 @@ public class RagFlowServiceImpl implements RagFlowService {
     }
 
     /**
-     * 更新文档信息
+     * 更新文档信息（元数据 + 文档级切法）
+     * <p>
+     * 切法下发（方案A，2026-11-25）：本旧管道（file2RagFlowPipeline）此前只传元数据，
+     * 文档按 dataset 建库默认切法解析，导致「document.shard_type 展示值 ≠ ragflow 实际切法」
+     * （典型场景：人工审核库移库后手动点向量化、个人库页面重跑向量化）。
+     * 此处补充：shard_type 有值且在开放字典内时随同一 PUT 下发 chunk_method，
+     * 与 Python 端 set_document_chunk_method 同机制（须在 chunkDocument2RagFlow 触发解析前执行，
+     * 本方法调用顺序即满足）。为空或非法（历史脏值，如已废弃的 general）不下发，
+     * 维持 dataset 默认切法——不能用脏值调 ragflow，否则整个 update 请求被拒、向量化管道中断。
+     *
      * @param documentDO 请求参数
      */
     private void updateDocument2RagFlow(DocumentDO documentDO) {
@@ -322,6 +332,15 @@ public class RagFlowServiceImpl implements RagFlowService {
         updateDocumentRequest.setDocumentId(documentDO.getVectorId());
         if (StringUtil.isNotBlank(documentDO.getMetadata())) {
             updateDocumentRequest.setMetaFields(JSON.parseObject(documentDO.getMetadata(), new TypeReference<Map<String, Object>>(){}));
+        }
+        // 文档级切法：仅合法值透传（见方法注释）；空/脏值不传，走 dataset 默认切法
+        if (StringUtil.isNotBlank(documentDO.getShardType())) {
+            if (ChunkMethodEnum.isValid(documentDO.getShardType())) {
+                updateDocumentRequest.setChunkMethod(documentDO.getShardType());
+            } else {
+                log.warn("文档切法取值非法，不下发（维持数据集默认切法）, docId={}, shardType={}",
+                        documentDO.getDocId(), documentDO.getShardType());
+            }
         }
         ragFlowIntegrationService.updateDocument(updateDocumentRequest);
     }

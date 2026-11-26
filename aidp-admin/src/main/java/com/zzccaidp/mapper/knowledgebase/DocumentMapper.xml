@@ -82,6 +82,7 @@
         d.metadata,
         d.parent_doc_name as parentDocName,
         d.is_attachment as isAttachment,
+        d.shard_type as shardType,
         dt.dataset_id as datasetId,
         d.status as status
         FROM document d
@@ -297,6 +298,7 @@
         d.parent_doc_name as parentDocName,
         d.is_attachment as isAttachment,
         d.own_dataset_id as ownDatasetId,
+        d.shard_type as shardType,
         d.status as status
         FROM document d
         WHERE d.doc_id = #{docId}
