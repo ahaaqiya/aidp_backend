@@ -421,7 +421,7 @@ public class AidpDocumentServiceImpl implements AidpDocumentService {
             documentDO.setDocType(PERSONAL_DOC_TYPE);
         } else {
             String docType = documentAddIn.getTwoTagName();
-            if(StringUtils.isEmpty() || docType.length() == 0){
+            if(StringUtils.isEmpty(docType)){
                 documentDO.setDocType("pending_document");
                 log.info("[其他系统]AIDP文档打标说明：[文档ID: {},文档标题：{}]",documentAddIn.getDocId(),documentAddIn.getDocName());
             }else{
