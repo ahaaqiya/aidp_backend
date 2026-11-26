@@ -41,4 +41,13 @@ public class DocumentAddIn implements Serializable {
 
     /** 是否附件：0-正文，1-附件 */
     private Integer isAttachment;
+
+    // 二级标签
+    private String twoTagName;
+
+    // 备用字段1
+    private String backUp01;
+
+    // 备用字段2
+    private String backUp02;
 }
